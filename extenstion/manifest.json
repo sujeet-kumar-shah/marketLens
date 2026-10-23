@@ -1,0 +1,83 @@
+{
+  "manifest_version": 3,
+  "name": "MarketLens — Seller Research & Profit",
+  "version": "2.3.0",
+  "description": "Honest marketplace research for sellers: observed listing data, genuine price history, and a transparent fee / settlement / profit engine. Missing data stays missing — nothing is invented.",
+  "minimum_chrome_version": "102",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "alarms",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://*.amazon.in/*",
+    "https://*.amazon.com/*",
+    "https://*.flipkart.com/*",
+    "https://*.meesho.com/*",
+    "https://*.myntra.com/*",
+    "https://*.snapdeal.com/*",
+    "https://*.nykaa.com/*",
+    "https://*.ajio.com/*",
+    "https://*.jiomart.com/*",
+    "https://*.tatacliq.com/*",
+    "https://*.indiamart.com/*",
+    "https://*.shopclues.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "MarketLens"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.amazon.in/*",
+        "https://*.amazon.com/*",
+        "https://*.flipkart.com/*",
+        "https://*.meesho.com/*",
+        "https://*.myntra.com/*",
+        "https://*.snapdeal.com/*",
+        "https://*.nykaa.com/*",
+        "https://*.ajio.com/*",
+        "https://*.jiomart.com/*",
+        "https://*.tatacliq.com/*",
+        "https://*.indiamart.com/*",
+        "https://*.shopclues.com/*"
+      ],
+      "js": [
+        "src/money.js",
+        "src/data-quality.js",
+        "src/product-model.js",
+        "src/platform-rules.js",
+        "src/fee-engine.js",
+        "src/tax-engine.js",
+        "src/profit-engine.js",
+        "src/reconciliation.js",
+        "src/price-history.js",
+        "src/competition.js",
+        "src/search-capture.js",
+        "src/charts.js",
+        "src/adapters.js",
+        "src/storage.js",
+        "content.js"
+      ],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MarketLens</title>
+<style>
+  :root {
+    --bg: #f4f6fb; --bg2: #fff; --bg3: #f1f4f9; --border: #e1e6ef;
+    --text: #202938; --muted: #697586; --accent: #2874f0;
+    --ok: #177a45; --warn: #9a5b00; --bad: #bd3038;
+  }
+  * { box-sizing: border-box; }
+  body {
+    width: 400px; margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 12.5px; line-height: 1.45;
+  }
+  header { padding: 15px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+  header h1 { margin: 0; font-size: 16px; letter-spacing: -.2px; }
+  header p { margin: 3px 0 0 0; color: var(--muted); font-size: 11.5px; }
+  main { padding: 12px; display: flex; flex-direction: column; gap: 10px; max-height: 580px; overflow-y: auto; }
+  section { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; box-shadow: 0 2px 8px rgba(28, 44, 68, .035); }
+  h2 { margin: 0 0 6px 0; font-size: 13px; }
+  h3 { margin: 12px 0 4px 0; font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  p.note { margin: 6px 0 0 0; color: var(--muted); font-size: 11.5px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px dashed var(--border); }
+  .row:last-child { border-bottom: none; }
+  .field { display: flex; flex-direction: column; gap: 2px; margin: 7px 0; }
+  .field label { color: var(--muted); font-size: 11.5px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  input[type="number"], input[type="text"], select {
+    width: 100%; background: var(--bg2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 8px; font-size: 12.5px; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 8px 11px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .15s ease, transform .15s ease;
+  }
+  button:hover { background: #1d62d2; }
+  button:active { transform: translateY(1px); }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #a9c5ff; outline-offset: 2px; }
+  button.ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  button.danger { background: transparent; border: 1px solid var(--bad); color: var(--bad); }
+  button.small { padding: 3px 8px; font-size: 11px; }
+  .actions { display: flex; gap: 8px; margin-top: 9px; flex-wrap: wrap; }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .badge.ok { color: var(--ok); border-color: var(--ok); }
+  .badge.warn { color: var(--warn); border-color: var(--warn); }
+  .badge.bad { color: var(--bad); border-color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { text-align: left; padding: 4px 6px 4px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  ul.plain { margin: 6px 0 0 0; padding-left: 16px; color: var(--muted); }
+  ul.plain li { margin: 2px 0; }
+  .muted { color: var(--muted); }
+  #toast { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--border); padding: 6px 10px; border-radius: 8px; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>MarketLens</h1>
+  <p>Listing observations, price history and a transparent fee/settlement/profit engine. No account, no server.</p>
+</header>
+<main>
+  <section id="page-card">
+    <h2>This tab</h2>
+    <div id="page-info"></div>
+    <div class="actions">
+      <button id="btn-sidebar">Toggle page sidebar</button>
+    </div>
+  </section>
+
+  <section id="capability-card">
+    <h2>Marketplace support (what is actually implemented)</h2>
+    <div id="capability-table"></div>
+    <p class="note">“Extraction not tested” means the adapter is written but has not been verified against live pages in this build. No marketplace fee rates ship with MarketLens — you enter them.</p>
+  </section>
+
+  <section id="rules-card">
+    <h2>Your fee rate card</h2>
+    <div id="rules-list"></div>
+    <p class="note">Add your real rates from a product page: Profit &amp; Taxes → “Your fee rate card”. A fee without a rate is reported as missing — never guessed.</p>
+  </section>
+
+  <section id="tax-card">
+    <h2>Tax treatment</h2>
+    <div id="tax-form"></div>
+  </section>
+
+  <section id="settings-card">
+    <h2>Settings</h2>
+    <div id="settings-form"></div>
+  </section>
+
+  <section id="data-card">
+    <h2>Your data</h2>
+    <div id="data-stats"></div>
+    <div class="actions">
+      <button id="btn-export" class="ghost small">Export JSON</button>
+      <label class="badge" style="cursor:pointer;">Import JSON<input type="file" id="import-file" accept="application/json" style="display:none;"></label>
+      <button id="btn-clear" class="danger small">Delete everything</button>
+    </div>
+    <p class="note" id="data-note">MarketLens stores seller inputs and genuine observations in this browser only. Nothing is uploaded anywhere.</p>
+  </section>
+
+  <section id="issues-card" style="display:none;">
+    <h2>Storage notes</h2>
+    <ul class="plain" id="issues-list"></ul>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script src="src/money.js"></script>
+<script src="src/data-quality.js"></script>
+<script src="src/platform-rules.js"></script>
+<script src="src/storage.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
