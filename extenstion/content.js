@@ -33,7 +33,7 @@
   let loadIssues = [];
   let extraction = null;
   let product = null;
-  let activeTab = 'listing';
+  let activeTab = 'funnel';
   let sess = {};                 // seller inputs for the current product
   let lastComparables = null;    // in-memory result of the latest scan
   let lastObserveNote = null;    // what happened when we tried to record a price
@@ -150,12 +150,133 @@
     return ul;
   }
 
+  function buyNowInsightsCard() {
+    const card = section('Buy Now Insights');
+    card.setAttribute('title', 'Winning Listing, Listing Quality, FA Status and Seller Tier live in your seller panel — not readable from a product page. Price and Fulfilment are exactly what this listing showed.');
+    const table = h('div', 'ml-table');
+    const row = (label, value) => {
+      const r = h('div', 'ml-table-row');
+      r.appendChild(h('span', 'ml-table-label', label));
+      r.appendChild(h('span', 'ml-table-value' + (value === '—' ? ' ml-muted' : ''), value));
+      table.appendChild(r);
+    };
+    row('Pincode', '—');
+    row('Winning Listing', '—');
+    row('Price', product.pricePaise === null || product.pricePaise === undefined ? '—' : moneyText(product.pricePaise));
+    row('Listing Quality', '—');
+    row('FA Status', '—');
+    row('Fulfillment', product.fulfilment || '—');
+    row('Seller Tier', '—');
+    card.appendChild(table);
+    return card;
+  }
+
+  function funnelCard() {
+    const card = section('Conversion Funnel');
+    card.setAttribute('title', 'Impressions, clicks, cart adds and sales come from your seller panel — not readable from a product page, so the rows stay —.');
+    const f = h('div', 'ml-funnel');
+    for (const label of ['Impressions', 'Clicks', 'Cart Adds', 'Sales']) {
+      const rowEl = h('div', 'ml-funnel-row');
+      rowEl.appendChild(h('span', 'ml-funnel-name', label));
+      rowEl.appendChild(h('div', 'ml-funnel-track'));
+      rowEl.appendChild(h('span', 'ml-funnel-val ml-muted', '—'));
+      rowEl.appendChild(h('span', 'ml-funnel-drop', ''));
+      f.appendChild(rowEl);
+    }
+    card.appendChild(f);
+    return card;
+  }
+
+  function salesRankCard() {
+    const card = section('Sales Rank (Last 30 days)');
+    card.setAttribute('title', 'Category and vertical ranks are seller-panel data — not readable from a product page, so the rows stay —. Observed search position is real: it comes from search pages you actually opened.');
+    const table = h('div', 'ml-table');
+    const row = (label, value) => {
+      const r = h('div', 'ml-table-row');
+      r.appendChild(h('span', 'ml-table-label', label));
+      r.appendChild(h('span', 'ml-table-value' + (value === '—' ? ' ml-muted' : ''), value));
+      table.appendChild(r);
+    };
+    row('Sub Category', '—');
+    row('Super Category', '—');
+    row('Vertical', '—');
+    const rank = product.productId ? capture.findRankInCaptures(state.comparables, product.productId) : null;
+    row('Observed search position', rank
+      ? '#' + rank.position + ' of ' + rank.sampleSize + (rank.query ? ' in “' + rank.query + '”' : '') + ' · ' + tsText(rank.observedAt)
+      : '—');
+    card.appendChild(table);
+    const chips = h('div', 'ml-chips');
+    chips.appendChild(badge('Average Quality: —', 'muted'));
+    chips.appendChild(badge('Flipkart Fulfilled: ' + (product.fulfilment || '—'), 'muted'));
+    card.appendChild(chips);
+    return card;
+  }
+
+  function renderFunnel() {
+    ui.panel.appendChild(funnelCard());
+    ui.panel.appendChild(salesRankCard());
+  }
+
   // --------------------------------------------------------------- init
   function unitKey() { return product ? model.unitKey(product) : null; }
   function currentRecord() {
     const key = unitKey();
     if (!key || !state.products) return {};
     return state.products[key] || {};
+  }
+
+  function ratingTrendCard() {
+    const card = section('Rating Trend');
+    card.setAttribute('title', 'A rating trend needs the rating value recorded on repeat visits — not available yet.');
+    card.appendChild(h('p', 'ml-dash', '—'));
+    return card;
+  }
+
+  function renderRatings() {
+    ui.panel.appendChild(returnCard());
+    ui.panel.appendChild(topReturnReasonsCard());
+    ui.panel.appendChild(ratingGrowthCard());
+    ui.panel.appendChild(ratingTrendCard());
+  }
+
+  function renderBuyNow() {
+    const wrap = ui.panel;
+    wrap.appendChild(buyNowInsightsCard());
+    const card = section('Observed on this page',
+      'Read once, at the moment this page loaded (' + tsText(product.observationTs) + '). Values the adapter could not find stay missing.');
+    const table = h('div', 'ml-table');
+    for (const [key, label] of OBSERVED_FIELDS) {
+      const raw = product[key];
+      let shown = null;
+      if (key === 'pricePaise' || key === 'mrpPaise') shown = raw === null || raw === undefined ? null : moneyText(raw);
+      else if (key === 'discountPct') shown = raw === null || raw === undefined ? null : money.formatPct(raw, { decimals: 1 });
+      else if (key === 'packedDimsCm') shown = raw ? raw.l + ' × ' + raw.w + ' × ' + raw.h + ' cm' : null;
+      else if (key === 'actualWeightG') shown = raw === null || raw === undefined ? null : money.formatInt(raw) + ' g';
+      else if (key === 'stockStatus') shown = raw === 'in_stock' ? 'In stock' : raw === 'out_of_stock' ? 'Out of stock' : (raw || null);
+      else shown = raw === null || raw === undefined || raw === '' ? null : String(raw);
+      const row = h('div', 'ml-table-row');
+      row.appendChild(h('span', 'ml-table-label', label));
+      row.appendChild(h('span', 'ml-table-value' + (shown === null ? ' ml-missing' : ''), shown === null ? 'not found' : shown));
+      row.appendChild(provBadge(product.fieldProvenance ? product.fieldProvenance[key] : null));
+      table.appendChild(row);
+    }
+    card.appendChild(table);
+    if (extraction.extractionStatus === 'dom_changed') {
+      card.appendChild(h('p', 'ml-alert ml-alert-bad',
+        'Neither title nor price could be read on this page. The site layout may have changed, or this is not a product page. MarketLens will not guess values.'));
+    } else if (extraction.extractionStatus === 'partial') {
+      card.appendChild(h('p', 'ml-alert ml-alert-warn',
+        'Only part of the product could be read (title found: ' + (product.title ? 'yes' : 'no') + ', price found: ' +
+        (product.pricePaise !== null ? 'yes' : 'no') + '). Fields marked “not found” are not part of any calculation.'));
+    }
+    if (extraction.warnings && extraction.warnings.length) card.appendChild(warnList(extraction.warnings, 'muted'));
+    if (lastObserveNote) card.appendChild(h('p', 'ml-note', 'Price observation: ' + lastObserveNote));
+    if (loadIssues && loadIssues.length) {
+      const issueCard = section('Storage notes', 'From the last time stored data was read (migration or repair):');
+      issueCard.appendChild(warnList(loadIssues, 'muted'));
+      wrap.appendChild(issueCard);
+    }
+    wrap.appendChild(card);
   }
 
   async function init() {
@@ -169,7 +290,7 @@
     extraction = adapters.extractFor(document, location.href);
     product = extraction.product;
     isSearchCapturePage = capture.isSearchUrl(location.href);
-    activeTab = isSearchCapturePage ? 'traffic' : 'listing';
+    activeTab = 'funnel';
     sess = Object.assign({}, currentRecord());
     sess.statement = Object.assign({}, sess.statement || {});
     buildShell();
@@ -187,7 +308,7 @@
     storage.load().then(res => {
       state = res.state;
       loadIssues = res.issues;
-      if (activeTab === 'listing' || activeTab === 'watchlist' || activeTab === 'traffic' || activeTab === 'trend') renderPanel();
+      if (activeTab === 'watchlist' || activeTab === 'buynow' || activeTab === 'traffic' || activeTab === 'trend') renderPanel();
     }).catch(() => {});
   }
   function onRuntimeMessage(msg, sender, sendResponse) {
@@ -228,7 +349,7 @@
     } else {
       lastObserveNote = 'Could not store the observation: ' + ((resp && resp.error) || 'unknown error') + ' (nothing was invented).';
     }
-    if (activeTab === 'listing' || activeTab === 'trend') renderPanel();
+    if (activeTab === 'buynow' || activeTab === 'trend') renderPanel();
   }
 
   // --------------------------------------------------- search page capture
@@ -242,7 +363,7 @@
     try {
       const cap = capture.captureFromDocument(document, location.href);
       if (!cap.listings.length) {
-        if (activeTab === 'traffic') renderPanel();
+        if (activeTab === 'buynow' || activeTab === 'traffic') renderPanel();
         return;
       }
       const key = 'search:' + cap.marketplace + ':' + String(cap.query || 'unlabelled').toLowerCase().slice(0, 80);
@@ -253,7 +374,7 @@
     } catch (e) {
       // Capture failed (layout change, DOM mid-load): nothing is stored, nothing is invented.
     }
-    if (activeTab === 'traffic') renderPanel();
+    if (activeTab === 'buynow' || activeTab === 'traffic') renderPanel();
   }
 
   // --------------------------------------------------------------- shell
@@ -329,10 +450,12 @@
     const body = h('div', 'ml-body');
     const rail = h('div', 'ml-rail');
     const tabs = [
-      ['listing', '◉', 'Listing'],
-      ['traffic', '⌕', 'Research'],
-      ['trend', '↗', 'Price History'],
+      ['funnel', '▽', 'Conversion Funnel'],
+      ['traffic', '☰', 'Traffic & Keywords'],
+      ['trend', '↗', 'Price & Sales Trend'],
+      ['ratings', '★', 'Returns & Ratings'],
       ['settlement', '₹', 'Settlement Calculator'],
+      ['buynow', '⚡', 'Buy Now Insights'],
       ['profit', '%', 'Profit & Taxes'],
       ['watchlist', '☆', 'Watchlist']
     ];
@@ -434,8 +557,8 @@
     extraction = next;
     product = next.product;
     isSearchCapturePage = capture.isSearchUrl(href);
-    if (wasSearchPage !== isSearchCapturePage && (activeTab === 'listing' || activeTab === 'traffic')) {
-      activeTab = isSearchCapturePage ? 'traffic' : 'listing';
+    if (wasSearchPage !== isSearchCapturePage && (activeTab === 'funnel' || activeTab === 'traffic')) {
+      activeTab = 'funnel';
     }
     sess = Object.assign({}, currentRecord());
     sess.statement = Object.assign({}, sess.statement || {});
@@ -464,10 +587,12 @@
       ui.watchBtn.textContent = watched ? '✓ In Watchlist' : 'Add to Watchlist';
     }
     clear(ui.panel);
-    if (activeTab === 'listing') renderListing();
+    if (activeTab === 'funnel') renderFunnel();
     else if (activeTab === 'traffic') renderTraffic();
     else if (activeTab === 'trend') renderTrend();
+    else if (activeTab === 'ratings') renderRatings();
     else if (activeTab === 'settlement') renderSettlement();
+    else if (activeTab === 'buynow') renderBuyNow();
     else if (activeTab === 'profit') renderProfit();
     else if (activeTab === 'watchlist') renderWatchlist();
   }
@@ -516,22 +641,6 @@
     const svg = svgChart(series, { formatTick });
     if (svg) card.appendChild(svg);
     else card.appendChild(h('p', 'ml-note', 'No chart: ' + series.reason + '.'));
-    return card;
-  }
-
-  function observedSearchPositionCard() {
-    const card = section('Observed search position',
-      'Position from a search or category page you opened; this is not a sales rank.');
-    const table = h('div', 'ml-table');
-    const fsn = product.productId || null;
-    const rank = fsn ? capture.findRankInCaptures(state.comparables, fsn) : null;
-    const row = h('div', 'ml-table-row');
-    row.appendChild(h('span', 'ml-table-label', 'Last captured'));
-    row.appendChild(h('span', 'ml-table-value' + (rank ? '' : ' ml-muted'), rank
-      ? '#' + rank.position + ' of ' + rank.sampleSize + (rank.query ? ' in “' + rank.query + '”' : '') + ' · ' + tsText(rank.observedAt)
-      : 'No matching search capture yet'));
-    table.appendChild(row);
-    card.appendChild(table);
     return card;
   }
 
@@ -643,60 +752,20 @@
     wrap.appendChild(settlementCalculatorCard());
   }
 
+  function topReturnReasonsCard() {
+    const card = section('Top Return Reasons');
+    card.setAttribute('title', 'Return reasons are seller-panel data — not readable from a product page, so the card stays —.');
+    card.appendChild(h('p', 'ml-dash', '—'));
+    return card;
+  }
+
   // ------------------------------------------------------ observed ratings
   function ratingGrowthCard() {
     const key = unitKey();
     const series = (key && state.observations[key]) ? state.observations[key] : [];
     const pts = series.filter(o => typeof o.reviewCount === 'number').map(o => ({ ts: o.ts, value: o.reviewCount }));
     const step = charts.buildStep(pts, { width: 520, height: 190 });
-    return chartCard('Observed review-count history',
-      'Recorded on repeat visits; changes between observations are not interpolated.',
-      step, v => money.formatInt(v));
-  }
-
-  function renderListing() {
-    const wrap = ui.panel;
-    const card = section('Observed listing data',
-      'Read once, at the moment this page loaded (' + tsText(product.observationTs) + '). Values the adapter could not find stay missing.');
-
-    const table = h('div', 'ml-table');
-    for (const [key, label] of OBSERVED_FIELDS) {
-      const raw = product[key];
-      let shown = null;
-      if (key === 'pricePaise' || key === 'mrpPaise') shown = raw === null ? null : moneyText(raw);
-      else if (key === 'discountPct') shown = raw === null ? null : money.formatPct(raw, { decimals: 1 });
-      else if (key === 'packedDimsCm') shown = raw ? raw.l + ' × ' + raw.w + ' × ' + raw.h + ' cm' : null;
-      else if (key === 'actualWeightG') shown = raw === null ? null : money.formatInt(raw) + ' g';
-      else if (key === 'stockStatus') shown = raw === 'in_stock' ? 'In stock' : raw === 'out_of_stock' ? 'Out of stock' : (raw || null);
-      else shown = raw === null || raw === undefined || raw === '' ? null : String(raw);
-      const row = h('div', 'ml-table-row');
-      row.appendChild(h('span', 'ml-table-label', label));
-      const v = h('span', 'ml-table-value' + (shown === null ? ' ml-missing' : ''), shown === null ? 'not found' : shown);
-      row.appendChild(v);
-      row.appendChild(provBadge(product.fieldProvenance ? product.fieldProvenance[key] : null));
-      table.appendChild(row);
-    }
-    card.appendChild(table);
-
-    if (extraction.extractionStatus === 'dom_changed') {
-      card.appendChild(h('p', 'ml-alert ml-alert-bad',
-        'Neither title nor price could be read on this page. The site layout may have changed, or this is not a product page. MarketLens will not guess values.'));
-    } else if (extraction.extractionStatus === 'partial') {
-      card.appendChild(h('p', 'ml-alert ml-alert-warn',
-        'Only part of the product could be read (title found: ' + (product.title ? 'yes' : 'no') + ', price found: ' +
-        (product.pricePaise !== null ? 'yes' : 'no') + '). Fields marked “not found” are not part of any calculation.'));
-    }
-    if (extraction.warnings && extraction.warnings.length) card.appendChild(warnList(extraction.warnings, 'muted'));
-
-    if (lastObserveNote) card.appendChild(h('p', 'ml-note', 'Price observation: ' + lastObserveNote));
-    wrap.appendChild(card);
-    wrap.appendChild(ratingGrowthCard());
-
-    if (loadIssues && loadIssues.length) {
-      const issueCard = section('Storage notes', 'From the last time stored data was read (migration or repair):');
-      issueCard.appendChild(warnList(loadIssues, 'muted'));
-      wrap.appendChild(issueCard);
-    }
+    return chartCard('Rating Count', null, step, v => money.formatInt(v));
   }
 
   async function toggleWatchlist() {
@@ -738,7 +807,6 @@
     wrap.appendChild(profitCostsCard());
     wrap.appendChild(feeRuleCard());
     wrap.appendChild(profitResultCard());
-    wrap.appendChild(returnCard());
     wrap.appendChild(solverCard());
     wrap.appendChild(discountCard());
     wrap.appendChild(adsCard());
@@ -1313,35 +1381,56 @@
   function renderTrend() {
     const wrap = ui.panel;
     wrap.appendChild(priceHistoryCard());
+    wrap.appendChild(salesTrendCard());
   }
 
   // ------------------------------------------------- traffic & keywords tab
+  function salesTrendCard() {
+    const card = section('Sales Trend');
+    card.setAttribute('title', 'Sales trend is seller-panel data — not readable from a product page, so the chart stays empty.');
+    card.appendChild(h('p', 'ml-dash', '—'));
+    return card;
+  }
+
+  function impressionsCard() {
+    const card = section('Impressions');
+    card.setAttribute('title', 'The organic/ads impressions split is seller-panel data — not readable from a product page.');
+    const legend = h('div', 'ml-chips');
+    legend.appendChild(badge('Organic —', 'muted'));
+    legend.appendChild(badge('Ads —', 'muted'));
+    card.appendChild(legend);
+    card.appendChild(h('div', 'ml-funnel-track'));
+    return card;
+  }
+
   function topKeywordsCard() {
-    const card = section('Title keyword candidates',
-      'Mechanical phrases from this listing title only; no search volume or performance is available here.');
+    const card = section('Top 10 keywords');
     const title = product.title;
     const words = title ? keywordCandidates(tokenize(title)) : [];
     const table = h('div', 'ml-table');
-    const head = h('div', 'ml-keyword-row ml-table-head');
-    head.appendChild(h('span', 'ml-table-label', 'Candidate phrase'));
+    const head = h('div', 'ml-table-row ml-3col ml-table-head');
+    head.appendChild(h('span', 'ml-table-label', 'Keyword'));
+    head.appendChild(h('span', 'ml-table-value', 'Impressions'));
+    head.appendChild(h('span', 'ml-table-value', 'CTR'));
     table.appendChild(head);
     const rows = words.slice(0, 10);
-    if (!rows.length) {
-      card.appendChild(h('p', 'ml-note', 'No title phrases could be generated from this page.'));
-      return card;
-    }
+    if (!rows.length) rows.push('—');
     for (let i = 0; i < rows.length; i++) {
       const k = rows[i];
-      const row = h('div', 'ml-keyword-row');
-      row.appendChild(h('span', 'ml-table-value', k));
+      const row = h('div', 'ml-table-row ml-3col');
+      row.appendChild(h('span', 'ml-table-label' + (k === '—' ? ' ml-muted' : ''), k));
+      row.appendChild(h('span', 'ml-table-value ml-muted', '—'));
+      row.appendChild(h('span', 'ml-table-value ml-muted', '—'));
       table.appendChild(row);
     }
     card.appendChild(table);
+    card.appendChild(h('p', 'ml-note', 'Terms from this listing’s title. Impressions and CTR are seller-panel data — not readable from a product page.'));
     return card;
   }
 
   function renderTraffic() {
     const wrap = ui.panel;
+    wrap.appendChild(impressionsCard());
     wrap.appendChild(topKeywordsCard());
     wrap.appendChild(observedSearchPositionCard());
     wrap.appendChild(comparablesScanCard());

@@ -95,13 +95,13 @@ Everything below is yours to enter. Until you do, the row stays “—”.
 
 Other features:
 
-* **Focused sidebar** — six tabs: **Listing, Research, Price History, Settlement Calculator, Profit & Taxes, Watchlist**. The sidebar focuses on public-page observations, seller-entered values and calculations; unavailable private seller analytics (impressions, sales funnels, internal rank, return reasons and seller tier) are not presented as empty dashboard cards.
-* **Quick open / close** — hide the sidebar with the close button or `Escape`; reopen it with the floating MarketLens chat-bubble button. Both controls have accessible labels.
+* **Seller insights layout** — the sidebar keeps the expanded tabs: **Conversion Funnel, Traffic & Keywords, Price & Sales Trend, Returns & Ratings, Settlement Calculator, Buy Now Insights, Profit & Taxes, Watchlist**. Public-page observations appear in **Buy Now Insights → Observed on this page**; private seller-panel metrics remain visibly unavailable rather than guessed.
+* **Quick open / close** — close the sidebar with **×** or `Escape`; reopen it with the floating MarketLens chat-bubble button. Both controls have accessible labels.
 * **Settlement Calculator (v2.3)** — the same shape sellers are used to: donut + rows (Listing Price → Fees and Taxes, with Marketplace Fee / Total Taxes sub-rows → Customer Logistics Fee → **Est. Net Settlement** → “calculated as per your rate card”). It computes from your rate card at any price you type; with no rates the donut and rows show “—” until the charge list is complete. The ₹797-style statement reconciliation remains in Profit & Taxes and is never silently adjusted.
 * **Search-page capture** — supported search/category pages are captured locally: each result’s displayed position, plus price and rating *where readable*. Matching product pages report the position and capture time. Positions are DOM order — **not** a sales rank; internal marketplace rank, traffic, conversion and views are not observable from a public page and are never shown. Old captures roll off at 60 (newest kept).
 * **Observed history** — genuine price observations are deduplicated and plotted only when there are enough points. Review-count history is similarly based on repeat visits; no values are interpolated.
-* **Competitors** — one-page comparable scans with median/range/review-share statistics and a documented score (factors, weights, formula). The score is withheld when the sample is too small (<5) or prices are mostly unreadable. The scan card lives in the Research tab.
-* **Keyword candidates** — mechanical phrases from the listing title, clearly labelled as candidates; no search-volume or keyword-performance values are shown.
+* **Competitors** — one-page comparable scans with median/range/review-share statistics and a documented score (factors, weights, formula). The score is withheld when the sample is too small (<5) or prices are mostly unreadable. The scan card lives in **Traffic & Keywords**.
+* **Keywords** — mechanical n-gram candidates from the listing title; impressions and CTR remain blank because they are only in the seller panel.
 * **Target price solver** — finds the lowest price meeting a break-even / profit / margin / ROI goal, recomputing fees at every candidate price, verified by re-evaluation. Unreachable goals are reported, not approximated.
 * **Discount / returns / advertising / monthly forecast** — each re-runs the whole stack; assumptions are stated on screen.
 * **Watchlist & alerts** — alerts fire only on a genuinely stored observation crossing your target downward. The scheduled re-check opens watched product pages in a background tab (max 2 per run); pages that cannot be read store nothing and raise nothing.
@@ -132,17 +132,17 @@ To add a marketplace: add an entry to `MARKETPLACES` and `applicableFees` in `sr
 ## Manual test checklist (after loading unpacked)
 
 1. Open a Flipkart/Amazon IN/Meesho **product page** → sidebar opens; observed fields show values or “not found”; the badge says whether the page was fully/partly read.
-2. Listing → the observed-fields table shows values or “not found”; repeat visits can build a review-count history.
+2. Buy Now Insights → the observed-fields table shows values or “not found”; repeat visits can build a review-count history.
 3. Settlement Calculator → with no rate card, the donut is replaced by “—” and every fee row shows “—”; add commission + a fixed fee in Profit & Taxes, then reopen the tab and the split computes from your rate card at the observed price.
-4. Research → title phrases are labelled as candidates; the observed search position appears only after a matching search capture; comparable scans report the page sample or explain why no score is available.
+4. Conversion Funnel → seller-panel rows remain “—”; observed search position appears after a matching search capture.
 5. Profit & Taxes → with no rate card: fee components show **missing** with reasons; settlement says ✕ incomplete.
 6. Add commission 10% + a fixed fee → components compute; totals update; badge says “your rate”.
 7. Solver → break even; type a higher target → expect “No price … reaches that goal” when genuinely impossible.
 8. Reconciliation → enter the ₹797 data above; under default tolerance expect a ₹1 mismatch flag; set tolerance ₹1 → “rounding, still shown”.
 9. Watchlist → save product, set a target above the current price, “Check watchlist now” → a background tab opens and closes; a notification fires only when a real observation crosses the target.
-10. Research → open a **search page**, “Scan this page” → stats appear or an honest “0 listings / withheld” message; title keyword phrases are shown only as candidates.
+10. Traffic & Keywords → open a **search page**, “Scan this page” → stats appear or an honest “0 listings / withheld” message; title phrases are candidates, with no fabricated impressions or CTR.
 11. Search capture → open a Flipkart search page: the header badge reads “Search page — capturing listings”; open one of those products → **Observed search position** shows “#N of M in ‘query’” (or explains no matching capture exists). Navigating between search and product pages without a full reload re-reads the page and updates the badge.
-12. Price History / Listing → after ≥2 visits with different prices or review counts: axis-labelled charts draw; with fewer points the UI explains that repeat observations are needed.
+12. Price & Sales Trend / Returns & Ratings → after ≥2 visits with different prices or review counts: observed-history charts draw; seller-only values remain unavailable.
 13. Popup → capability table, tax settings, export/import, delete-everything with double confirm.
 14. Close the sidebar with **×** or `Escape`, reopen with the floating chat-bubble button; the controls should not cover one another.
 15. Reload the extension → sidebar is not duplicated; data persisted; no console errors.
